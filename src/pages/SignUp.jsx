@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { AiFillEyeInvisible, AiFillEye } from 'react-icons/ai';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { OAuth } from '../components/OAuth';
+
+import { AiFillEyeInvisible, AiFillEye } from 'react-icons/ai';
+import { toast } from 'react-toastify';
+
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { db } from '../firebase'
 
 export const SignUp = () => {
 
@@ -14,12 +20,51 @@ export const SignUp = () => {
   });
 
   const { name, email, password } = formData;
+  const navigate = useNavigate();
 
   const onChange = (e) => {
     setFormData( (prevState) => ({
       ...prevState,
       [e.target.id]: e.target.value
     }) )
+  }
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+
+      const auth = getAuth();
+      const userCredentials = await createUserWithEmailAndPassword(
+        auth, 
+        email, 
+        password
+      );
+
+        updateProfile(auth.currentUser, {
+          displayName: name
+        })
+
+      const user = userCredentials.user;
+      const formDataCopy = { ...formData };
+      delete formDataCopy.password;
+      formDataCopy.timestamp = serverTimestamp();
+
+      // anadir un usuario a la base de datos de firebase
+      await setDoc( doc( db, "users", user.uid ), formDataCopy );
+      
+      // alerta de toastify de que se ha registrado con exito
+      toast.success('Sign up was successfull!!'); 
+
+      // despues de registrado redireccionar a la pagina de inicio
+      navigate('/')
+      
+    } catch (error) {
+      toast.error('Something went wrong with the registration')
+      console.log(error);
+    }
+
+
   }
 
   return (
@@ -43,7 +88,7 @@ export const SignUp = () => {
         </div>
 
         <div className='w-full md:w-[67%] lg:w-[40%] lg:ml-20'>
-          <form >
+          <form onSubmit={ onSubmit }>
 
             <input 
                 className='mb-6
